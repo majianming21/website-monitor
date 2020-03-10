@@ -55,4 +55,14 @@ public interface WebsiteJobDAO {
             "</script>",
     })
     int resetNoticeLeftCount(@Param("websiteJobIds") Collection<Integer> websiteJobIds);
+
+    @Insert({
+            "<script>",
+            "update `website_jobs` set left_recover_count=left_recover_count-1 where left_recover_count>0 and id in ",
+            "<foreach item='websiteJobId' collection='websiteJobIds' separator=',' open=' (' close=')'> ",
+            "#{websiteJobId}",
+            "</foreach>",
+            "</script>",
+    })
+    int decreaseNoticeLeftCount(@Param("websiteJobIds") Collection<Integer> websiteJobIds);
 }

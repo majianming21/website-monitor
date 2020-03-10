@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
  */
 @Service
 @Slf4j
-public class WebsiteJobServiceImpl implements WebsiteJobService/*, InitializingBean */ {
+public class WebsiteJobServiceImpl implements WebsiteJobService {
     @Autowired
     private WebsiteJobDAO websiteJobDAO;
     @Autowired
@@ -71,53 +71,22 @@ public class WebsiteJobServiceImpl implements WebsiteJobService/*, InitializingB
     }
 
     @Override
-    public int resetNoticeLeftCount(Collection<WebsiteJobDTO> websiteJob) {
-        if (CollectionUtils.isEmpty(websiteJob)) {
+    public int resetNoticeLeftCount(Collection<WebsiteJobDTO> websiteJobDTOS) {
+        if (CollectionUtils.isEmpty(websiteJobDTOS)) {
             return 0;
         }
-        List<Integer> websiteJobIds = websiteJob.stream().filter(l -> l.getNoticeType() == NoticeTypeEnum.HAS_PRE_N_NOTICES_WITH_RECOVER || l.getNoticeType() == NoticeTypeEnum.HAS_PRE_N_NOTICES_WITH_RECOVER_AND_NOTICE).map(WebsiteJobDTO::getId).collect(Collectors.toList());
+        List<Integer> websiteJobIds = websiteJobDTOS.stream().filter(l -> l.getNoticeType() == NoticeTypeEnum.HAS_PRE_N_NOTICES_WITH_RECOVER || l.getNoticeType() == NoticeTypeEnum.HAS_PRE_N_NOTICES_WITH_RECOVER_AND_NOTICE).map(WebsiteJobDTO::getId).collect(Collectors.toList());
         return websiteJobDAO.resetNoticeLeftCount(websiteJobIds);
     }
 
+    @Override
+    public int decreaseNoticeLeftCount(Collection<WebsiteJobDTO> websiteJobDTOS) {
+        if (CollectionUtils.isEmpty(websiteJobDTOS)) {
+            return 0;
+        }
+        List<Integer> websiteJobIds = websiteJobDTOS.stream().filter(l -> l.getNoticeType() == NoticeTypeEnum.HAS_PRE_N_NOTICES_WITH_RECOVER || l.getNoticeType() == NoticeTypeEnum.HAS_PRE_N_NOTICES_WITH_RECOVER_AND_NOTICE||l.getNoticeType() == NoticeTypeEnum.HAS_PRE_N_NOTICES_WITH_CLOSE).map(WebsiteJobDTO::getId).collect(Collectors.toList());
+        return websiteJobDAO.decreaseNoticeLeftCount(websiteJobIds);
+    }
 
-//    private final static List<WebsiteJobDTO> websiteJobs = new ArrayList<>();
-//
-//    static {
-//
-//        WeChatWorkWebHookDTO sendMethod = WeChatWorkWebHookDTO.newInstant();
-//        sendMethod.setContent("口罩可以选广州了 快点到 https://new-mask-html.dslbuy.com/newmain.html 选吧");
-//        sendMethod.setKey("6ce60972-3dd1-4305-9f6d-1393d514cba4");
-//        WatchKeyWordMethodDTO keyWordMethodDTO = WatchKeyWordMethodDTO.newInstant();
-//        keyWordMethodDTO.setAppear(true);
-//        keyWordMethodDTO.setKeyWord("广州");
-//
-//        WebsiteDTO build = WebsiteDTO.builder().url("https://new-mask-html.dslbuy.com/newmain.html").build();
-//        WebsiteJobDTO 大森林 = WebsiteJobDTO.builder().cronExpression("0 0 */2 * * ?").websiteId(1)
-//                .name("大森林")
-//                .status(1)
-//                .websiteInfo(build)
-//                .sendMethod(sendMethod).watchMethod(keyWordMethodDTO)
-//                .build();
-//        websiteJobs.add(大森林);
-//    }
-//
-//    static {
-//
-//        WeChatWorkWebHookDTO sendMethod = WeChatWorkWebHookDTO.newInstant();
-//        sendMethod.setContent("v2 有java 快点到 https://www.v2ex.com");
-//        sendMethod.setKey("6ce60972-3dd1-4305-9f6d-1393d514cba4");
-//        WatchKeyWordMethodDTO keyWordMethodDTO = WatchKeyWordMethodDTO.newInstant();
-//        keyWordMethodDTO.setAppear(true);
-//        keyWordMethodDTO.setKeyWord("java");
-//
-//        WebsiteDTO build = WebsiteDTO.builder().url("https://www.v2ex.com").build();
-//        WebsiteJobDTO v2 = WebsiteJobDTO.builder().cronExpression("0 * * * * ?").websiteId(1)
-//                .name("v2")
-//                .status(1)
-//                .websiteInfo(build)
-//                .sendMethod(sendMethod).watchMethod(keyWordMethodDTO)
-//                .build();
-//        websiteJobs.add(v2);
-//    }
 
 }

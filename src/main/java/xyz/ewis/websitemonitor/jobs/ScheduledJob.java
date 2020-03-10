@@ -17,35 +17,37 @@ import xyz.ewis.websitemonitor.thread.WatchThreadFactory;
 import xyz.ewis.websitemonitor.thread.notice.BaseNoticeThread;
 import xyz.ewis.websitemonitor.thread.watch.BaseWatchThread;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Queue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingDeque;
 
 /**
- * ExcutorJob
+ * ScheduledJob
  *
  * @author MAJANNING
  * @date 2020/3/6
  */
 @Component
 @Slf4j
-public class ExcutorJob {
-    private final String cronEx = "*/5 * * * * *";
+public class ScheduledJob {
+    private final String cronExpression = "*/5 * * * * *";
     @Autowired
     @Qualifier(value = "watchJobExecutor")
     private ThreadPoolTaskExecutor taskExecutor;
     @Autowired
     private WebsiteJobService websiteJobService;
     Queue<Future<WatchFeature>> watchFutureQueue = new LinkedBlockingDeque<>();
+    BlockingQueue<WebsiteJobDTO> resetCountWebsiteJobs = new LinkedBlockingDeque<>();
+    LinkedBlockingDeque<WebsiteJobDTO> decreaseCountWebsiteJobs = new LinkedBlockingDeque<>();
     Queue<Future<WatchFeature>> watchStatusQueue = new LinkedBlockingDeque<>();
 
     @Async
-    @Scheduled(cron = cronEx)
-    public void check() {
+    @Scheduled(cron = cronExpression)
+    public void watchJob() {
         List<WebsiteJobDTO> websiteJobDTOS = websiteJobService.loadByDelayFromNow(5);
 
         for (WebsiteJobDTO websiteJobDTO : websiteJobDTOS) {
@@ -69,7 +71,7 @@ public class ExcutorJob {
     }
 
     @Async
-    @Scheduled(cron = cronEx)
+    @Scheduled(cron = cronExpression)
     public void notice() {
         Future<WatchFeature> done;
         while (Objects.nonNull(done = getDone(watchFutureQueue))) {
@@ -82,18 +84,35 @@ public class ExcutorJob {
             assert watchFeature != null;
             if (watchFeature.isWatched()) {
                 noticeWatchMessageIfNeed(watchFeature.getWebsiteJobDTO());
-                decreaseCountIfNeed(watchFeature.getWebsiteJobDTO());
+                preDecreaseCountIfNeed(watchFeature.getWebsiteJobDTO());
             } else {
                 noticeRecoverMessageIfNeed(watchFeature.getWebsiteJobDTO());
-                resetCountIfNeed(watchFeature.getWebsiteJobDTO());
+                preResetCountIfNeed(watchFeature.getWebsiteJobDTO());
             }
-
         }
+        updateCount();
     }
 
-    private void resetCountIfNeed(WebsiteJobDTO websiteJobDTO) {
-
+    private void updateCount() {
+        List<WebsiteJobDTO> transList=Lists.newArrayListWithCapacity(resetCountWebsiteJobs.size());
+        resetCountWebsiteJobs.drainTo(transList);
+        websiteJobService.resetNoticeLeftCount(transList);
+        transList=Lists.newArrayListWithCapacity(decreaseCountWebsiteJobs.size());
+        decreaseCountWebsiteJobs.drainTo(transList);
+        websiteJobService.decreaseNoticeLeftCount(transList);
     }
+
+    private void preResetCountIfNeed(WebsiteJobDTO websiteJobDTO) {
+        if (websiteJobDTO.getLeftRecoverCount().equals(websiteJobDTO.getSetRecoverCount())) {
+            return;
+        }
+        NoticeTypeEnum noticeType = websiteJobDTO.getNoticeType();
+        if (noticeType == NoticeTypeEnum.HAS_PRE_N_NOTICES_WITH_CLOSE) {
+            return;
+        }
+        resetCountWebsiteJobs.add(websiteJobDTO);
+    }
+
     private void noticeRecoverMessageIfNeed(WebsiteJobDTO websiteJobDTO) {
         if (websiteJobDTO.getNoticeType() != NoticeTypeEnum.HAS_PRE_N_NOTICES_WITH_RECOVER_AND_NOTICE) {
             return;
@@ -105,8 +124,15 @@ public class ExcutorJob {
         taskExecutor.submit(baseSenderThread);
     }
 
-    private void decreaseCountIfNeed(WebsiteJobDTO websiteJobDTO) {
-
+    private void preDecreaseCountIfNeed(WebsiteJobDTO websiteJobDTO) {
+        if (websiteJobDTO.getLeftRecoverCount() == 0) {
+            return;
+        }
+        NoticeTypeEnum noticeType = websiteJobDTO.getNoticeType();
+        if (noticeType == NoticeTypeEnum.ALWAYS) {
+            return;
+        }
+        decreaseCountWebsiteJobs.add(websiteJobDTO);
     }
 
     private void noticeWatchMessageIfNeed(WebsiteJobDTO websiteJobDTO) {
@@ -122,40 +148,6 @@ public class ExcutorJob {
         taskExecutor.submit(baseSenderThread);
     }
 
-    //    @Async
-//    @Scheduled(cron = cronEx)
-    public void update() {
-        List<WebsiteJobDTO> websiteJobDTOS = new ArrayList<>();
-        List<WebsiteJobDTO> resetRecoverCountJob = new ArrayList<>();
-        while (true) {
-            Future<WatchFeature> future = watchFutureQueue.peek();
-            if (Objects.isNull(future)) {
-                break;
-            }
-            if (future.isCancelled()) {
-                watchFutureQueue.remove(future);
-                continue;
-            }
-            if (!future.isDone()) {
-                continue;
-            }
-            watchFutureQueue.remove(future);
-
-            if (future.isDone()) {
-                WatchFeature watchFeature = null;
-                try {
-                    watchFeature = future.get();
-                } catch (InterruptedException | ExecutionException e) {
-
-                }
-//                if (watchFeature.isNotWatch()) {
-////                    websiteJobDTOS.add(feature.getWebsiteJobDTO());
-//                    resetRecoverCountJob.add(watchFeature.getWebsiteJobDTO());
-//                }
-            }
-        }
-        websiteJobService.resetNoticeLeftCount(resetRecoverCountJob);
-    }
 
 //
 //    private void updateJobIfCloseNotice() {

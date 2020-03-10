@@ -21,4 +21,5 @@ public interface WebsiteJobService {
 
     int resetNoticeLeftCount(Collection<WebsiteJobDTO> websiteJobDTOS );
 
+    int decreaseNoticeLeftCount(Collection<WebsiteJobDTO> websiteJobDTOS);
 }
