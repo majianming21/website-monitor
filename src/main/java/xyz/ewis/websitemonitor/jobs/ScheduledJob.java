@@ -61,6 +61,7 @@ public class ScheduledJob {
         while (!watchFutureQueue.isEmpty()) {
             Future<WatchFeature> peek = watchFutureQueue.peek();
             if (peek.isDone()) {
+                watchFutureQueue.remove(peek);
                 return peek;
             }
             if (peek.isCancelled()) {
@@ -73,6 +74,9 @@ public class ScheduledJob {
     @Async
     @Scheduled(cron = cronExpression)
     public void notice() {
+        if (watchFutureQueue.isEmpty()) {
+            return;
+        }
         Future<WatchFeature> done;
         while (Objects.nonNull(done = getDone(watchFutureQueue))) {
             WatchFeature watchFeature = null;
@@ -94,10 +98,10 @@ public class ScheduledJob {
     }
 
     private void updateCount() {
-        List<WebsiteJobDTO> transList=Lists.newArrayListWithCapacity(resetCountWebsiteJobs.size());
+        List<WebsiteJobDTO> transList = Lists.newArrayListWithCapacity(resetCountWebsiteJobs.size());
         resetCountWebsiteJobs.drainTo(transList);
         websiteJobService.resetNoticeLeftCount(transList);
-        transList=Lists.newArrayListWithCapacity(decreaseCountWebsiteJobs.size());
+        transList = Lists.newArrayListWithCapacity(decreaseCountWebsiteJobs.size());
         decreaseCountWebsiteJobs.drainTo(transList);
         websiteJobService.decreaseNoticeLeftCount(transList);
     }
